@@ -2,7 +2,9 @@ import { CookbookCard } from '@/components/home/CookbookCard';
 import { CreateCookbookSheet } from '@/components/home/CreateCookbookSheet';
 import { NewCookbookCard } from '@/components/home/NewCookbookCard';
 import { TutorialBanner } from '@/components/home/TutorialBanner';
+import { ImageReviewSheet } from '@/components/import/ImageReviewSheet';
 import { PasteLinkSheet } from '@/components/import/PasteLinkSheet';
+import { PasteWebLinkSheet } from '@/components/import/PasteWebLinkSheet';
 import { CreateRecipeSheet } from '@/components/recipe/CreateRecipeSheet';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import Colors from '@/constants/Colors';
@@ -34,6 +36,8 @@ export default function HomeScreen() {
     const [isCreateSheetVisible, setCreateSheetVisible] = useState(false); // Create Cookbook
     const [isAddRecipeSheetVisible, setAddRecipeSheetVisible] = useState(false); // Add Recipe FAB
     const [isPasteLinkVisible, setIsPasteLinkVisible] = useState(false);
+    const [isPasteWebLinkVisible, setIsPasteWebLinkVisible] = useState(false);
+    const [isImageReviewVisible, setIsImageReviewVisible] = useState(false);
     const [isCreateRecipeVisible, setCreateRecipeVisible] = useState(false);
 
     const colorScheme = useColorScheme();
@@ -104,12 +108,24 @@ export default function HomeScreen() {
                 title="Import recipe"
             >
                 <View style={styles.optionsContainer}>
-                    <TouchableOpacity style={[styles.optionButton, { backgroundColor: colors.surface }]}>
+                    <TouchableOpacity
+                        style={[styles.optionButton, { backgroundColor: colors.surface }]}
+                        onPress={() => {
+                            setAddRecipeSheetVisible(false);
+                            setTimeout(() => setIsPasteWebLinkVisible(true), 300);
+                        }}
+                    >
                         <Ionicons name="globe-outline" size={24} color={colors.accent} />
                         <Text style={[styles.optionText, { color: colors.text }]}>Browser</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.optionButton, { backgroundColor: colors.surface }]}>
+                    <TouchableOpacity
+                        style={[styles.optionButton, { backgroundColor: colors.surface }]}
+                        onPress={() => {
+                            setAddRecipeSheetVisible(false);
+                            setTimeout(() => setIsImageReviewVisible(true), 300);
+                        }}
+                    >
                         <Ionicons name="camera-outline" size={24} color={colors.accent} />
                         <Text style={[styles.optionText, { color: colors.text }]}>Camera</Text>
                     </TouchableOpacity>
@@ -145,6 +161,24 @@ export default function HomeScreen() {
                 title="Import from Video"
             >
                 <PasteLinkSheet onClose={() => setIsPasteLinkVisible(false)} />
+            </BottomSheet>
+
+            {/* Paste Web Link Sheet */}
+            <BottomSheet
+                visible={isPasteWebLinkVisible}
+                onClose={() => setIsPasteWebLinkVisible(false)}
+                title="Import from Web"
+            >
+                <PasteWebLinkSheet onClose={() => setIsPasteWebLinkVisible(false)} />
+            </BottomSheet>
+
+            {/* Image Import Sheet */}
+            <BottomSheet
+                visible={isImageReviewVisible}
+                onClose={() => setIsImageReviewVisible(false)}
+                title="Import from Image"
+            >
+                <ImageReviewSheet onClose={() => setIsImageReviewVisible(false)} />
             </BottomSheet>
 
             {/* Create Recipe Sheet */}
