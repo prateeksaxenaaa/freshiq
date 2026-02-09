@@ -152,6 +152,17 @@ export default function HomeScreen() {
                     <Ionicons name="create-outline" size={20} color={colors.text} />
                     <Text style={[styles.scratchText, { color: colors.text }]}>Write from scratch</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.guideLink, { marginTop: 16 }]}
+                    onPress={() => {
+                        setAddRecipeSheetVisible(false);
+                        router.push('/guide');
+                    }}
+                >
+                    <Ionicons name="help-circle-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.guideLinkText, { color: colors.primary }]}>How to import? View Guides & Tips</Text>
+                </TouchableOpacity>
             </BottomSheet>
 
             {/* Paste Link Sheet */}
@@ -215,9 +226,9 @@ const UserCookbookGrid = ({ cookbooks, uncategorizedCount, onAddPress, colors }:
             contentContainerStyle={styles.content}
             ListHeaderComponent={
                 <View style={styles.headerContainer}>
-                    <TutorialBanner onPress={() => console.log('Open Tutorial')} />
+                    <TutorialBanner onPress={() => router.push('/guide')} />
                     <View style={styles.sectionHeader}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Cookbooks ▾</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Cookbooks</Text>
                     </View>
                 </View>
             }
@@ -269,9 +280,10 @@ const styles = StyleSheet.create({
     },
     appBar: {
         paddingHorizontal: 20,
-        paddingVertical: 10,
+        paddingTop: 24,
+        paddingBottom: 4,
         justifyContent: 'center',
-        height: 50,
+        height: 68,
     },
     logoText: {
         fontSize: 24,
@@ -283,16 +295,17 @@ const styles = StyleSheet.create({
         height: 40,
     },
     content: {
-        padding: 20,
-        paddingBottom: 100, // Space for FAB
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        paddingBottom: 100,
     },
     headerContainer: {
-        marginBottom: 20,
+        marginBottom: 16,
     },
     sectionTitle: {
-        fontSize: 24, // H1
-        fontWeight: '600',
-        marginBottom: 16,
+        fontSize: 22,
+        fontWeight: '700',
+        marginBottom: 4,
     },
     columnWrapper: {
         justifyContent: 'space-between',
@@ -354,6 +367,17 @@ const styles = StyleSheet.create({
     scratchText: {
         marginLeft: 8,
         fontSize: 16,
+        fontWeight: '600',
+    },
+    guideLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+    },
+    guideLinkText: {
+        marginLeft: 6,
+        fontSize: 14,
         fontWeight: '600',
     }
 });

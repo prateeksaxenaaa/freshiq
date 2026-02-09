@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         padding: 16,
         borderRadius: 16,
-        marginBottom: 24,
+        marginBottom: 12,
     },
     text: {
         fontSize: 16,
