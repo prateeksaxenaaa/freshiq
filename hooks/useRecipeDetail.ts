@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/AuthProvider';
 import { useHousehold } from '@/contexts/HouseholdProvider';
 import { supabase } from '@/lib/supabase';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert } from 'react-native';
 
 /**
  * Fetch recipe with all related data (ingredients, steps)
@@ -275,6 +276,12 @@ export function useAddToShoppingList() {
             if (error) throw error;
             return inserted;
         },
+        onSuccess: () => {
+            Alert.alert('Added to Shopping List', 'Ingredient has been added to your shopping list.');
+        },
+        onError: (err: any) => {
+            Alert.alert('Error', 'Failed to add item: ' + err.message);
+        }
     });
 }
 

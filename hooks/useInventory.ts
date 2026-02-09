@@ -2,13 +2,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useHousehold } from '../contexts/HouseholdProvider';
 import { supabase } from '../lib/supabase';
-import { Database } from '../types/supabase';
 
-// Extending type manually until Database definitions are regenerated
-export type InventoryItem = Database['public']['Tables']['inventory_items']['Row'] & {
+// Simplified type to avoid missing Database export issue
+export type InventoryItem = {
+    id: string;
+    household_id: string;
+    name: string;
+    quantity?: number;
+    unit?: string;
     storage_id?: string | null;
-    storage_locations?: { name: string } | null; 
-    status?: string | null; // Added status field
+    status?: string | null;
+    created_at?: string;
+    storage_locations?: { name: string } | null;
 };
 
 export const useInventory = () => {
@@ -52,6 +57,57 @@ export const useStorageLocations = () => {
             return data;
         },
         enabled: !!household?.id
+    });
+};
+
+export const useCreateStorageLocation = () => {
+    const queryClient = useQueryClient();
+    const { household } = useHousehold();
+
+    return useMutation({
+        mutationFn: async ({ name, type }: { name: string; type: 'fridge' | 'freezer' | 'pantry' | 'other' }) => {
+            if (!household?.id) throw new Error("No household found");
+
+            const { data, error } = await supabase
+                .from('storage_locations')
+                .insert({
+                    household_id: household.id,
+                    name,
+                    type,
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['storage_locations', household?.id] });
+        },
+    });
+};
+
+export const useDeleteStorageLocation = () => {
+    const queryClient = useQueryClient();
+    const { household } = useHousehold();
+
+    return useMutation({
+        mutationFn: async (id: string) => {
+            if (!household?.id) throw new Error("No household found");
+
+            // Delete storage location - RLS should handle permissions
+            const { error } = await supabase
+                .from('storage_locations')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['storage_locations', household?.id] });
+            // Also invalidate inventory as items might have been deleted (or we should handle orphans)
+            queryClient.invalidateQueries({ queryKey: ['inventory', household?.id] });
+        },
     });
 };
 

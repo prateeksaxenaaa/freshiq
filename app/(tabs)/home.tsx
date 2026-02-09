@@ -1,6 +1,7 @@
 import { CookbookCard } from '@/components/home/CookbookCard';
 import { CreateCookbookSheet } from '@/components/home/CreateCookbookSheet';
 import { NewCookbookCard } from '@/components/home/NewCookbookCard';
+import { ShoppingListCard } from '@/components/home/ShoppingListCard';
 import { TutorialBanner } from '@/components/home/TutorialBanner';
 import { ImageReviewSheet } from '@/components/import/ImageReviewSheet';
 import { PasteLinkSheet } from '@/components/import/PasteLinkSheet';
@@ -227,6 +228,7 @@ const UserCookbookGrid = ({ cookbooks, uncategorizedCount, onAddPress, colors }:
             ListHeaderComponent={
                 <View style={styles.headerContainer}>
                     <TutorialBanner onPress={() => router.push('/guide')} />
+                    <ShoppingListCard />
                     <View style={styles.sectionHeader}>
                         <Text style={[styles.sectionTitle, { color: colors.text }]}>Cookbooks</Text>
                     </View>

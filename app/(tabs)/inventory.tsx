@@ -1,10 +1,15 @@
+import { CreateStorageSheet } from '@/components/inventory/CreateStorageSheet';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import Colors from '@/constants/Colors';
+import { useHousehold } from '@/contexts/HouseholdProvider';
+import { useStorageLocations } from '@/hooks/useInventory';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     FlatList,
     Pressable,
@@ -16,20 +21,67 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Hardcoded defaults for Phase 1
-const DEFAULT_STORAGE = [
-    { id: 'freezer', name: 'Freezer', icon: 'snow', color: '#E0F2FE', textColor: '#0284C7' },
-    { id: 'fridge', name: 'Fridge', icon: 'thermometer-outline', color: '#DCFCE7', textColor: '#16A34A' }, // Greenish for Fresh
-    { id: 'pantry', name: 'Pantry', icon: 'nutrition-outline', color: '#FEF3C7', textColor: '#D97706' },
-];
+// System defaults configuration
+const SYSTEM_STORAGE_CONFIG: Record<string, any> = {
+    'freezer': { icon: 'snow-outline', color: '#E0F2FE', textColor: '#0284C7' },
+    'fridge': { icon: 'thermometer-outline', color: '#DCFCE7', textColor: '#16A34A' },
+    'pantry': { icon: 'basket-outline', color: '#FEF3C7', textColor: '#D97706' },
+    'shelf': { icon: 'reorder-four-outline', color: '#F1F5F9', textColor: '#475569' },
+    'other': { icon: 'cube-outline', color: '#F8FAFC', textColor: '#64748B' },
+};
 
 export default function InventoryScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme();
     const colors = Colors[colorScheme ?? 'light'];
 
-    // State for Phase 3
+    const { data: storageLocations, isLoading } = useStorageLocations();
+    const { household } = useHousehold();
     const [isUploadSheetVisible, setUploadSheetVisible] = useState(false);
+    const [isAddStorageVisible, setAddStorageVisible] = useState(false);
+
+    // Self-healing: Ensure system storage locations exist
+    React.useEffect(() => {
+        const verifyDefaults = async () => {
+            if (!household?.id || !storageLocations) return;
+
+            const existingTypes = storageLocations.map(l => l.type?.toLowerCase());
+            const defaults = [
+                { name: 'Fridge', type: 'fridge' },
+                { name: 'Freezer', type: 'freezer' },
+                { name: 'Pantry', type: 'pantry' },
+            ];
+
+            for (const item of defaults) {
+                if (!existingTypes.includes(item.type)) {
+                    console.log(`Self-healing: Recreating ${item.name}`);
+                    await supabase.from('storage_locations').insert({
+                        household_id: household.id,
+                        name: item.name,
+                        type: item.type as any
+                    });
+                }
+            }
+        };
+
+        if (!isLoading) {
+            verifyDefaults();
+        }
+    }, [storageLocations, isLoading, household?.id]);
+
+    const storageGridData = useMemo(() => {
+        const formatted = (storageLocations || []).map(loc => {
+            const type = (loc.type || loc.name || 'other').toLowerCase();
+            const config = SYSTEM_STORAGE_CONFIG[type] ||
+                SYSTEM_STORAGE_CONFIG[Object.keys(SYSTEM_STORAGE_CONFIG).find(k => type.includes(k)) || 'other'];
+
+            return {
+                ...loc,
+                ...config
+            };
+        });
+        return [...formatted, { id: 'add_new', name: 'Add Storage' }];
+    }, [storageLocations]);
 
     const pickImage = async (mode: 'camera' | 'gallery') => {
         setUploadSheetVisible(false);
@@ -77,7 +129,7 @@ export default function InventoryScreen() {
         });
     };
 
-    const renderStorageCard = ({ item }: { item: typeof DEFAULT_STORAGE[0] }) => (
+    const renderStorageCard = ({ item }: { item: any }) => (
         <TouchableOpacity
             style={[styles.card, { backgroundColor: item.color }]}
             onPress={() => handleStoragePress(item.id, item.name)}
@@ -95,7 +147,7 @@ export default function InventoryScreen() {
     const renderAddCard = () => (
         <TouchableOpacity
             style={[styles.card, styles.addCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => console.log("Add Storage Clicked")}
+            onPress={() => setAddStorageVisible(true)}
         >
             <View style={[styles.addIconContainer, { backgroundColor: colors.background }]}>
                 <Ionicons name="add" size={32} color={colors.primary} />
@@ -106,38 +158,42 @@ export default function InventoryScreen() {
         </TouchableOpacity>
     );
 
-    const data = [...DEFAULT_STORAGE, { id: 'add_new', name: 'Add Storage' }];
+    if (isLoading && !storageLocations) {
+        return (
+            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+                <View style={styles.center}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            {/* Header */}
             <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.text }]}>My Kitchen</Text>
                 <Text style={[styles.subtitle, { color: colors.neutral }]}>Manage your inventory</Text>
             </View>
 
-            {/* Storage Grid */}
             <FlatList
-                data={data}
+                data={storageGridData}
                 keyExtractor={(item) => item.id}
                 numColumns={2}
                 columnWrapperStyle={styles.columnWrapper}
                 contentContainerStyle={styles.listContent}
                 renderItem={({ item }) => {
                     if (item.id === 'add_new') return renderAddCard();
-                    return renderStorageCard({ item: item as any });
+                    return renderStorageCard({ item });
                 }}
             />
 
-            {/* Green FAB for Item Upload (Phase 3 Prep) */}
             <Pressable
-                style={[styles.fab, { backgroundColor: '#4ADE80' }]} // Green as requested
+                style={[styles.fab, { backgroundColor: colors.primary }]}
                 onPress={() => setUploadSheetVisible(true)}
             >
                 <Ionicons name="scan-outline" size={28} color="white" />
             </Pressable>
 
-            {/* Upload Bottom Sheet (Placeholder) */}
             <BottomSheet
                 visible={isUploadSheetVisible}
                 onClose={() => setUploadSheetVisible(false)}
@@ -161,6 +217,10 @@ export default function InventoryScreen() {
                 </View>
             </BottomSheet>
 
+            <CreateStorageSheet
+                visible={isAddStorageVisible}
+                onClose={() => setAddStorageVisible(false)}
+            />
         </SafeAreaView>
     );
 }
@@ -168,6 +228,11 @@ export default function InventoryScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    center: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     header: {
         paddingHorizontal: 20,
@@ -193,21 +258,14 @@ const styles = StyleSheet.create({
     },
     card: {
         flex: 1,
-        borderRadius: 24,
+        borderRadius: 20,
         padding: 20,
-        marginBottom: 16, // Gap between rows (handled by numColumns? No needs margin) 
-        // Actually Gap is better if supported, but margin safe.
-        minHeight: 160,
+        marginBottom: 16,
+        minHeight: 140,
         justifyContent: 'space-between',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 2,
-        marginHorizontal: 0, // Handled by columnWrapper space-between? 
-        // With space-between and 2 columns, we rely on container width.
-        // Better to use gap in columnWrapperStyle if React Native > 0.71
-        maxWidth: '48%', // Ensure 2 columns fit
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        maxWidth: '48%',
     },
     addCard: {
         borderWidth: 1,

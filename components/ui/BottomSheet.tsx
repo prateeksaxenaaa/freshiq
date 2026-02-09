@@ -2,6 +2,7 @@ import Colors from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
+    Dimensions,
     Modal,
     StyleSheet,
     Text,
@@ -10,6 +11,8 @@ import {
     View,
     useColorScheme,
 } from 'react-native';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface BottomSheetProps {
     visible: boolean;
@@ -37,14 +40,16 @@ export const BottomSheet = ({ visible, onClose, title, children }: BottomSheetPr
                                 <View style={styles.handle} />
                                 {title && (
                                     <View style={styles.titleRow}>
-                                        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-                                        <TouchableOpacity onPress={onClose}>
-                                            <Ionicons name="close" size={24} color={colors.neutral} />
+                                        <TouchableOpacity onPress={onClose} style={styles.backButton}>
+                                            <Ionicons name="arrow-back" size={24} color={colors.text} />
                                         </TouchableOpacity>
+                                        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
                                     </View>
                                 )}
                             </View>
-                            {children}
+                            <View style={styles.childrenContainer}>
+                                {children}
+                            </View>
                         </View>
                     </TouchableWithoutFeedback>
                 </View>
@@ -60,39 +65,40 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     content: {
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        padding: 24,
-        paddingBottom: 40,
-        minHeight: 200,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: -2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 10,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        paddingTop: 12,
+        paddingBottom: 24,
+        maxHeight: SCREEN_HEIGHT * 0.9,
+        minHeight: 300,
     },
     header: {
         alignItems: 'center',
-        marginBottom: 20,
+        paddingHorizontal: 20,
     },
     handle: {
-        width: 40,
-        height: 5,
+        width: 36,
+        height: 4,
         backgroundColor: '#E2E8F0',
-        borderRadius: 2.5,
-        marginBottom: 15,
+        borderRadius: 2,
+        marginBottom: 16,
     },
     titleRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
         width: '100%',
+        marginBottom: 20,
+    },
+    backButton: {
+        padding: 4,
+        marginRight: 12,
     },
     title: {
         fontSize: 20,
-        fontWeight: '600',
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
+    childrenContainer: {
+        paddingHorizontal: 20,
     },
 });

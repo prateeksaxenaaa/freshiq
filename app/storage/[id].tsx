@@ -1,6 +1,7 @@
 
 import Colors from '@/constants/Colors';
-import { InventoryItem, useCreateInventoryItem, useInventory, useStorageLocations, useUpdateInventoryItem } from '@/hooks/useInventory';
+import { useHousehold } from '@/contexts/HouseholdProvider';
+import { InventoryItem, useCreateInventoryItem, useDeleteStorageLocation, useInventory, useStorageLocations, useUpdateInventoryItem } from '@/hooks/useInventory';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -31,31 +32,78 @@ export default function StorageDetailScreen() {
 
     const { data: inventory, isLoading } = useInventory();
     const { data: allStorageLocations } = useStorageLocations(); // Fetch bins for moving
+    const { household } = useHousehold();
     const updateItem = useUpdateInventoryItem();
     const createItem = useCreateInventoryItem();
+    const deleteStorage = useDeleteStorageLocation();
 
     const [realStorageId, setRealStorageId] = useState<string | null>(null);
+    const [storageType, setStorageType] = useState<string | null>(null);
 
     // Fetch UUID if param is not UUID (e.g. from static card)
     useEffect(() => {
         const fetchId = async () => {
             const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+            // Try to resolve the ID/Type
+            let foundId: string | null = null;
+            let foundType: string | null = null;
+
             if (id && uuidRegex.test(id)) {
-                setRealStorageId(id);
+                foundId = id;
             } else {
-                // Try to find by name
+                // Try to find by name for current household
                 const { data } = await supabase
                     .from('storage_locations')
-                    .select('id')
+                    .select('id, type')
                     .ilike('name', name)
-                    .limit(1)
+                    .eq('household_id', household?.id)
                     .maybeSingle();
 
-                if (data) setRealStorageId(data.id);
+                if (data) {
+                    foundId = data.id;
+                    foundType = data.type;
+                }
             }
+
+            // If we found the ID, refresh the type
+            if (foundId && !foundType) {
+                const { data } = await supabase
+                    .from('storage_locations')
+                    .select('type')
+                    .eq('id', foundId)
+                    .maybeSingle();
+                foundType = data?.type || null;
+            }
+
+            // SELF-HEALING: If system name is requested but missing, recreate it
+            const systemNames = ['pantry', 'fridge', 'freezer'];
+            if (!foundId && systemNames.includes(name.toLowerCase()) && household?.id) {
+                console.log('Restoring missing system storage:', name);
+                const { data: restored, error } = await supabase
+                    .from('storage_locations')
+                    .insert({
+                        household_id: household.id,
+                        name: name.charAt(0).toUpperCase() + name.slice(1).toLowerCase(),
+                        type: name.toLowerCase() as any
+                    })
+                    .select()
+                    .single();
+
+                if (restored) {
+                    foundId = restored.id;
+                    foundType = restored.type;
+                }
+            }
+
+            setRealStorageId(foundId);
+            setStorageType(foundType);
         };
-        fetchId();
-    }, [id, name]);
+
+        if (household?.id) {
+            fetchId();
+        }
+    }, [id, name, household?.id]);
 
     // Derived storage ID to use for filtering
     const targetStorageId = realStorageId || id;
@@ -128,6 +176,36 @@ export default function StorageDetailScreen() {
                 onPress: () => updateItem.mutateAsync({ id, updates: { status: 'consumed' } }) // Soft Delete
             }
         ]);
+    };
+
+    const handleDeleteStorage = () => {
+        const reserved = ['fridge', 'freezer', 'pantry'];
+        if (reserved.includes(storageType?.toLowerCase() || '')) {
+            Alert.alert("Protected Storage", "Core storage locations (Fridge, Freezer, Pantry) cannot be deleted.");
+            return;
+        }
+
+        Alert.alert(
+            "Delete Storage",
+            `Are you sure you want to delete "${name}"? Items inside will become unassigned.`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            if (realStorageId) {
+                                await deleteStorage.mutateAsync(realStorageId);
+                                router.replace('/(tabs)/inventory');
+                            }
+                        } catch (e) {
+                            Alert.alert("Error", "Failed to delete storage.");
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const handleAddItem = async () => {
@@ -279,11 +357,19 @@ export default function StorageDetailScreen() {
             >
                 <Stack.Screen options={{ headerShown: false }} />
 
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                        <Ionicons name="arrow-back" size={28} color={colors.text} />
-                    </TouchableOpacity>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>{name || 'Storage'}</Text>
+                <View style={[styles.header, { justifyContent: 'space-between' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                            <Ionicons name="arrow-back" size={28} color={colors.text} />
+                        </TouchableOpacity>
+                        <Text style={[styles.headerTitle, { color: colors.text }]}>{name || 'Storage'}</Text>
+                    </View>
+
+                    {storageType && !['fridge', 'freezer', 'pantry'].includes(storageType.toLowerCase()) && (
+                        <TouchableOpacity onPress={handleDeleteStorage} style={styles.deleteBtnTop}>
+                            <Ionicons name="trash-outline" size={24} color={colors.destructive} />
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 {/* Legend (Hidden if list empty? No keep it) */}
@@ -482,6 +568,10 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16, gap: 12 },
     backBtn: { padding: 4 },
     headerTitle: { fontSize: 28, fontWeight: '800' },
+    deleteBtnTop: {
+        padding: 8,
+        marginRight: -4,
+    },
     legendContainer: { paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', backgroundColor: 'rgba(0,0,0,0.02)' },
     legendRow: { flexDirection: 'row', alignItems: 'center' },
     legendLabel: { fontSize: 13, fontWeight: '600', width: 100 },
