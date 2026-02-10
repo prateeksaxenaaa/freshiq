@@ -145,7 +145,22 @@ When replying, you MUST:
 
 ---
 
-### 10. FAILURE MODE
+### 11. NO SHADOWS ON CARDS
+
+You MUST NOT:
+
+* Use `shadowColor`, `shadowOffset`, `shadowOpacity`, `shadowRadius`, or `elevation` on cards or components
+* Use heavy drop shadows for depth
+
+You MUST:
+
+* Use **subtle borders** (e.g., `borderWidth: 1`, `borderColor: colors.border`)
+* Use **flat backgrounds** or very light semi-transparent overlays
+* Stick to a clean, modern, flat design language
+
+---
+
+### 12. FAILURE MODE
 
 If a request risks breaking:
 

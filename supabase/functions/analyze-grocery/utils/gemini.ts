@@ -68,6 +68,19 @@ export async function analyzeGroceryImage(base64: string) {
 
     } catch (error) {
         console.error("Gemini Analysis Error:", error);
+
+        // Debug: Try to list models if API call fails
+        try {
+            const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
+            const listResp = await fetch(listModelsUrl);
+            if (listResp.ok) {
+                const listData = await listResp.json();
+                console.log('Available Gemini Models:', JSON.stringify(listData));
+            } else {
+                console.log('Failed to list models:', await listResp.text());
+            }
+        } catch (e) {}
+
         throw error;
     }
 }

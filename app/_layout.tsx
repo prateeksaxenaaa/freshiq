@@ -67,15 +67,14 @@ function RootLayoutNav() {
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(auth)'; // If we had an auth group, but we don't yet.
-    // simpler check:
-    const inLogin = segments[0] === 'login';
+    // Check if the current route is specifically the login page
+    const isLoginPage = segments[0] === '(auth)' && segments[1] === 'login';
 
-    if (!session && !inLogin) {
-      // Redirect to the login page.
-      router.replace('/login');
-    } else if (session && inLogin) {
-      // Redirect back to the home page.
+    if (!session && !isLoginPage) {
+      // Redirect to the login page if not authenticated and not already on the login page
+      router.replace('/(auth)/login');
+    } else if (session && isLoginPage) {
+      // Redirect back to the home page if authenticated and on the login page
       router.replace('/(tabs)');
     }
   }, [session, loading, segments]);

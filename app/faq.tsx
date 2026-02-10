@@ -1,8 +1,10 @@
-import { Text, View } from '@/components/Themed';
+// Standardized FAQ Screen with Custom Header
 import Colors from '@/constants/Colors';
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React from 'react';
-import { ScrollView, StyleSheet, useColorScheme } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const FAQ_DATA = [
     {
@@ -33,8 +35,15 @@ export default function FAQScreen() {
     const colors = Colors[colorScheme ?? 'light'];
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <Stack.Screen options={{ title: 'Help & FAQs' }} />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+            <Stack.Screen options={{ headerShown: false }} />
+
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Help & FAQs</Text>
+            </View>
 
             <ScrollView contentContainerStyle={styles.content}>
                 {FAQ_DATA.map((faq, index) => (
@@ -44,7 +53,7 @@ export default function FAQScreen() {
                     </View>
                 ))}
             </ScrollView>
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -55,19 +64,24 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        paddingTop: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+        backgroundColor: '#FFFFFF',
     },
     backButton: {
-        padding: 8,
+        marginRight: 6,
+        padding: 4,
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        marginLeft: 8,
+        fontSize: 22,
+        fontWeight: '800',
+        letterSpacing: -0.5,
     },
     content: {
-        padding: 20,
+        padding: 16,
+        paddingTop: 8,
     },
     card: {
         padding: 20,

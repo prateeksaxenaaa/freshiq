@@ -251,9 +251,18 @@ export default function ReviewScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+        backgroundColor: '#FFFFFF',
+    },
     backBtn: { padding: 4 },
-    headerTitle: { fontSize: 24, fontWeight: '700' },
+    headerTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
     content: { padding: 20, paddingBottom: 50 },
     previewImage: { width: '100%', height: 300, borderRadius: 16, marginBottom: 20, backgroundColor: '#f0f0f0' },
     loadingContainer: { alignItems: 'center', marginTop: 20 },

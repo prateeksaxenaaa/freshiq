@@ -27,7 +27,16 @@ export const useProfile = () => {
                 .single();
 
             if (error) throw error;
-            return data as Profile;
+            
+            const profile = data as Profile;
+            // Fallback to Google OAuth picture if DB avatar is null
+            if (!profile.avatar_url && session.user.user_metadata?.avatar_url) {
+                profile.avatar_url = session.user.user_metadata.avatar_url;
+            } else if (!profile.avatar_url && session.user.user_metadata?.picture) {
+                profile.avatar_url = session.user.user_metadata.picture;
+            }
+
+            return profile;
         },
         enabled: !!session?.user?.id,
     });

@@ -87,6 +87,8 @@ export default function SettingsScreen() {
                     <View style={[styles.avatarPlaceholder, { backgroundColor: colors.surface }]}>
                         {profile?.avatar_url ? (
                             <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                        ) : session?.user?.user_metadata?.avatar_url || session?.user?.user_metadata?.picture ? (
+                            <Image source={{ uri: session.user.user_metadata.avatar_url || session.user.user_metadata.picture }} style={styles.avatarImage} />
                         ) : (
                             <Ionicons name="person" size={40} color={colors.primary} />
                         )}
@@ -236,11 +238,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: 32,
-        elevation: 4,
-        shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
     },
     premiumContent: {
         flexDirection: 'row',

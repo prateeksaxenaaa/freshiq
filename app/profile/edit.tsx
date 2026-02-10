@@ -1,11 +1,13 @@
 import Colors from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthProvider';
 import { useProfile } from '@/hooks/useProfile';
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -108,6 +110,19 @@ export default function EditProfileScreen() {
                 style={{ flex: 1 }}
             >
                 <ScrollView contentContainerStyle={styles.scrollContent}>
+                    <View style={styles.avatarSection}>
+                        <View style={[styles.avatarPlaceholder, { backgroundColor: colors.surface }]}>
+                            {profile?.avatar_url ? (
+                                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                            ) : session?.user?.user_metadata?.avatar_url || session?.user?.user_metadata?.picture ? (
+                                <Image source={{ uri: session.user.user_metadata.avatar_url || session.user.user_metadata.picture }} style={styles.avatarImage} />
+                            ) : (
+                                <Ionicons name="person" size={40} color={colors.primary} />
+                            )}
+                        </View>
+                        <Text style={[styles.avatarLabel, { color: colors.primary }]}>Profile Picture</Text>
+                    </View>
+
                     <View style={styles.form}>
                         <View style={styles.inputGroup}>
                             <Text style={[styles.label, { color: colors.neutral }]}>First Name</Text>
@@ -182,6 +197,27 @@ const styles = StyleSheet.create({
     },
     form: {
         gap: 20,
+    },
+    avatarSection: {
+        alignItems: 'center',
+        marginBottom: 32,
+    },
+    avatarPlaceholder: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+        overflow: 'hidden',
+    },
+    avatarImage: {
+        width: 100,
+        height: 100,
+    },
+    avatarLabel: {
+        fontSize: 14,
+        fontWeight: '600',
     },
     inputGroup: {
         gap: 8,

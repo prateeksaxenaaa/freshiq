@@ -79,6 +79,10 @@ export function useAddRecipeToCookbook() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['cookbooks'] });
             queryClient.invalidateQueries({ queryKey: ['recipes'] });
+            queryClient.invalidateQueries({ queryKey: ['uncategorized-recipes'] });
+            queryClient.invalidateQueries({ queryKey: ['uncategorized-recipes-count'] });
+            queryClient.invalidateQueries({ queryKey: ['recipe-cookbooks'] });
+            queryClient.invalidateQueries({ queryKey: ['cookbook-recipes'] });
         },
     });
 }
@@ -102,6 +106,10 @@ export function useRemoveRecipeFromCookbook() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['cookbooks'] });
             queryClient.invalidateQueries({ queryKey: ['recipes'] });
+            queryClient.invalidateQueries({ queryKey: ['uncategorized-recipes'] });
+            queryClient.invalidateQueries({ queryKey: ['uncategorized-recipes-count'] });
+            queryClient.invalidateQueries({ queryKey: ['recipe-cookbooks'] });
+            queryClient.invalidateQueries({ queryKey: ['cookbook-recipes'] });
         },
     });
 }
@@ -128,6 +136,7 @@ export function useMoveRecipeToCookbook() {
             queryClient.invalidateQueries({ queryKey: ['uncategorized-recipes'] });
             queryClient.invalidateQueries({ queryKey: ['uncategorized-recipes-count'] });
             queryClient.invalidateQueries({ queryKey: ['recipe-cookbooks'] });
+            queryClient.invalidateQueries({ queryKey: ['cookbook-recipes'] });
         },
     });
 }
@@ -135,7 +144,7 @@ export function useMoveRecipeToCookbook() {
 /**
  * Get all recipes in a specific cookbook
  */
-export function useCookbookRecipes(cookbookId: string | null) {
+export function useCookbookRecipes(cookbookId: string | null, options: { enabled?: boolean } = {}) {
     return useQuery({
         queryKey: ['cookbook-recipes', cookbookId],
         queryFn: async () => {
@@ -143,14 +152,19 @@ export function useCookbookRecipes(cookbookId: string | null) {
 
             const { data, error } = await supabase
                 .from('recipe_cookbooks')
-                .select('recipe_id, recipes(*)')
+                .select('recipe_id, recipes(*, recipe_ingredients(*))')
                 .eq('cookbook_id', cookbookId);
 
             if (error) throw error;
             // @ts-ignore - join type inference
-            return data?.map((item) => item.recipes) || [];
+            const recipes = data?.map((item) => item.recipes) || [];
+            
+            // Sort by created_at desc
+            return recipes.sort((a: any, b: any) => 
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
         },
-        enabled: !!cookbookId,
+        enabled: (options.enabled ?? true) && !!cookbookId,
     });
 }
 
@@ -218,7 +232,7 @@ export function useUncategorizedRecipesCount() {
 /**
  * Get list of recipes not in any cookbook
  */
-export function useUncategorizedRecipes() {
+export function useUncategorizedRecipes(options: { enabled?: boolean } = {}) {
     const { household } = useHousehold();
 
     return useQuery({
@@ -229,7 +243,7 @@ export function useUncategorizedRecipes() {
             // Get all recipes
             const { data: allRecipes, error: recipesError } = await supabase
                 .from('recipes')
-                .select('*')
+                .select('*, recipe_ingredients(*)')
                 .eq('household_id', household.id)
                 .order('created_at', { ascending: false });
 
@@ -251,6 +265,55 @@ export function useUncategorizedRecipes() {
             // Return full recipe objects that are not in the set
             return allRecipes.filter(r => !categorizedIds.has(r.id));
         },
-        enabled: !!household,
+        enabled: (options.enabled ?? true) && !!household,
+    });
+}
+
+/**
+ * Update a cookbook's details
+ */
+export function useUpdateCookbook() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (data: { id: string; name?: string; description?: string }) => {
+            const { data: updated, error } = await supabase
+                .from('cookbooks')
+                .update({
+                    name: data.name,
+                    description: data.description,
+                })
+                .eq('id', data.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return updated;
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['cookbooks'] });
+            queryClient.invalidateQueries({ queryKey: ['cookbook-recipes', data.id] });
+        },
+    });
+}
+
+/**
+ * Delete a cookbook
+ */
+export function useDeleteCookbook() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase
+                .from('cookbooks')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['cookbooks'] });
+        },
     });
 }

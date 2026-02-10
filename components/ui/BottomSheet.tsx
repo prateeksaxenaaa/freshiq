@@ -14,14 +14,16 @@ import {
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+
 interface BottomSheetProps {
     visible: boolean;
     onClose: () => void;
     title?: string;
     children: React.ReactNode;
+    minHeight?: number;
 }
 
-export const BottomSheet = ({ visible, onClose, title, children }: BottomSheetProps) => {
+export const BottomSheet = ({ visible, onClose, title, children, minHeight = 300 }: BottomSheetProps) => { // Default to 300 to keep existing behavior
     const colorScheme = useColorScheme();
     const colors = Colors[colorScheme ?? 'light'];
 
@@ -35,7 +37,7 @@ export const BottomSheet = ({ visible, onClose, title, children }: BottomSheetPr
             <TouchableWithoutFeedback onPress={onClose}>
                 <View style={styles.overlay}>
                     <TouchableWithoutFeedback>
-                        <View style={[styles.content, { backgroundColor: colors.background }]}>
+                        <View style={[styles.content, { backgroundColor: colors.background, minHeight }]}>
                             <View style={styles.header}>
                                 <View style={styles.handle} />
                                 {title && (
@@ -68,9 +70,8 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,
         paddingTop: 12,
-        paddingBottom: 24,
+        paddingBottom: 34, // Increased bottom padding for safe area
         maxHeight: SCREEN_HEIGHT * 0.9,
-        minHeight: 300,
     },
     header: {
         alignItems: 'center',

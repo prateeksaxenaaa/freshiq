@@ -22,7 +22,8 @@ interface ImageReviewSheetProps {
 }
 
 export const ImageReviewSheet = ({ onClose }: ImageReviewSheetProps) => {
-    const [image, setImage] = useState<string | null>(null);
+    const [imageUri, setImageUri] = useState<string | null>(null);
+    const [imageBase64, setImageBase64] = useState<string | null>(null); // Only for API
     const [mimeType, setMimeType] = useState<string>('image/jpeg');
     const [error, setError] = useState<string | null>(null);
 
@@ -34,47 +35,71 @@ export const ImageReviewSheet = ({ onClose }: ImageReviewSheetProps) => {
     // Mutation to handle upload & analyze
     const analyzeMutation = useMutation({
         mutationFn: async () => {
-            if (!image || !session?.user) return;
+            console.log('[ImageReview] 1. Triggered');
 
-            // 1. Convert URI to Base64 (if not already)
-            // expo-image-picker returns base64 if requested
-            let base64 = image;
-            if (image.startsWith('data:')) {
-                base64 = image.split(',')[1];
+            if (!imageBase64) {
+                console.error('[ImageReview] No base64 data');
+                throw new Error('No image data prepared');
+            }
+            if (!session?.user) {
+                console.error('[ImageReview] No user session');
+                throw new Error('Please log in first');
             }
 
-            // 2. Create Import Record
+            // Check size
+            const len = imageBase64.length;
+            const approxBytes = len * 0.75;
+            const limitBytes = 5 * 1024 * 1024; // 5MB Limit
+
+            console.log(`[ImageReview] 2. Size Check: ${len} chars (~${(approxBytes / 1024 / 1024).toFixed(2)} MB)`);
+
+            if (approxBytes > limitBytes) {
+                throw new Error(`Image is too large (${(approxBytes / 1024 / 1024).toFixed(2)} MB). Please pick a smaller image.`);
+            }
+
+            // 3. Create Import Record
+            console.log('[ImageReview] 3. Creating DB Record...');
             const { data: importRec, error: importError } = await supabase
                 .from('recipe_imports')
                 .insert({
                     user_id: session.user.id,
                     source_type: 'image_scan',
                     status: 'pending',
-                    content_payload: 'image_upload', // Placeholder
+                    content_payload: 'image_upload',
                 })
                 .select()
                 .single();
 
             if (importError) throw importError;
 
-            // 3. Invoke Analyze Function
+            console.log(`[ImageReview] 4. Record Created: ${importRec.id}. Invoking function...`);
+
+            // 4. Invoke Function
             const { data: funcData, error: funcError } = await supabase.functions.invoke('analyze-photo', {
                 body: {
-                    image_base64: base64,
+                    image_base64: imageBase64,
                     mime_type: mimeType,
                     import_id: importRec.id,
                     user_id: session.user.id,
                 }
             });
 
-            if (funcError) throw funcError;
-            if (funcData && !funcData.success) throw new Error(funcData.error || 'Analysis failed');
+            if (funcError) {
+                console.error('[ImageReview] Function Transport Error:', funcError);
+                throw funcError;
+            }
+
+            console.log('[ImageReview] 5. Function Response:', funcData?.success);
+
+            if (funcData && !funcData.success) {
+                throw new Error(funcData.error || 'Analysis failed in cloud');
+            }
 
             return funcData;
         },
         onSuccess: (data) => {
+            console.log('[ImageReview] Success flow');
             onClose();
-            // Navigate to generating screen or recipe directly if done
             if (data.import_id) {
                 router.push({
                     pathname: '/generating',
@@ -83,18 +108,21 @@ export const ImageReviewSheet = ({ onClose }: ImageReviewSheetProps) => {
             }
         },
         onError: (e) => {
-            console.error('Image analysis failed:', e);
-            setError('Failed to analyze image. Please try again.');
+            console.error('[ImageReview] Caught Error:', e);
+            setError(e.message || 'Failed to analyze image.');
         }
     });
 
     const pickImage = async (useCamera: boolean) => {
         setError(null);
         try {
+            // @ts-ignore
+            const mediaType = ImagePicker.MediaType ? ImagePicker.MediaType.Images : ImagePicker.MediaTypeOptions.Images;
+
             const options: ImagePicker.ImagePickerOptions = {
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: mediaType,
                 allowsEditing: true,
-                quality: 0.8,
+                quality: 0.3,
                 base64: true,
             };
 
@@ -109,9 +137,10 @@ export const ImageReviewSheet = ({ onClose }: ImageReviewSheetProps) => {
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
-                setImage(asset.base64 || null); // We need base64 for the Edge Function
-                // If base64 is missing (sometimes happens on Android without explicit option), we might need to read it.
-                // But `base64: true` usually ensures it.
+                console.log('[ImagePicker] Selected:', asset.uri);
+
+                setImageUri(asset.uri); // Use URI for display (No crash)
+                setImageBase64(asset.base64 || null); // Keep base64 for API
 
                 // Determine mime type from extension or asset
                 const uri = asset.uri.toLowerCase();
@@ -120,35 +149,36 @@ export const ImageReviewSheet = ({ onClose }: ImageReviewSheetProps) => {
                 else setMimeType('image/jpeg');
             }
         } catch (e) {
-            console.error('Image picker error:', e);
+            console.error('[ImagePicker] Error:', e);
             setError('Failed to pick image.');
         }
     };
 
     // Initial View: Choose Source
-    if (!image) {
+    if (!imageUri) {
         return (
             <View style={styles.container}>
-                <Text style={[styles.title, { color: colors.text }]}>Add a Recipe Image</Text>
-                <Text style={[styles.subtitle, { color: colors.neutral }]}>
-                    Take a photo of a dish, cookbook page, or handwritten note.
+                <Text style={[styles.description, { color: colors.text }]}>
+                    Scan a recipe from a cookbook, magazine, or handwritten note to instantly import it.
                 </Text>
 
-                <View style={styles.row}>
+                <View style={styles.buttonContainer}>
                     <TouchableOpacity
-                        style={[styles.bigButton, { backgroundColor: colors.surface }]}
+                        style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                         onPress={() => pickImage(true)}
+                        activeOpacity={0.7}
                     >
                         <Ionicons name="camera" size={32} color={colors.primary} />
-                        <Text style={[styles.buttonLabel, { color: colors.text }]}>Camera</Text>
+                        <Text style={[styles.actionLabel, { color: colors.text }]}>Take Photo</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.bigButton, { backgroundColor: colors.surface }]}
+                        style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                         onPress={() => pickImage(false)}
+                        activeOpacity={0.7}
                     >
-                        <Ionicons name="images" size={32} color={colors.accent} />
-                        <Text style={[styles.buttonLabel, { color: colors.text }]}>Gallery</Text>
+                        <Ionicons name="images" size={32} color={colors.primary} />
+                        <Text style={[styles.actionLabel, { color: colors.text }]}>Gallery</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -160,23 +190,28 @@ export const ImageReviewSheet = ({ onClose }: ImageReviewSheetProps) => {
     // Review View
     return (
         <View style={styles.container}>
-            <Text style={[styles.title, { color: colors.text }]}>Review Image</Text>
+            <View style={styles.reviewHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Review</Text>
+                <TouchableOpacity onPress={() => { setImageUri(null); setImageBase64(null); }}>
+                    <Ionicons name="close-circle" size={24} color={colors.neutral} />
+                </TouchableOpacity>
+            </View>
 
             <Image
-                source={{ uri: `data:${mimeType};base64,${image}` }}
+                source={{ uri: imageUri }}
                 style={styles.previewImage}
                 resizeMode="contain"
             />
 
             {error && <Text style={styles.errorText}>{error}</Text>}
 
-            <View style={styles.actionRow}>
+            <View style={styles.footerActions}>
                 <TouchableOpacity
-                    style={[styles.textButton]}
-                    onPress={() => setImage(null)}
+                    style={[styles.secondaryButton, { borderColor: colors.border }]}
+                    onPress={() => { setImageUri(null); setImageBase64(null); }}
                     disabled={analyzeMutation.isPending}
                 >
-                    <Text style={{ color: colors.neutral }}>Retake</Text>
+                    <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Retake</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -187,7 +222,10 @@ export const ImageReviewSheet = ({ onClose }: ImageReviewSheetProps) => {
                     {analyzeMutation.isPending ? (
                         <ActivityIndicator color="white" />
                     ) : (
-                        <Text style={styles.primaryButtonText}>Analyze Recipe</Text>
+                        <>
+                            <Ionicons name="sparkles" size={18} color="white" style={{ marginRight: 8 }} />
+                            <Text style={styles.primaryButtonText}>Analyze Recipe</Text>
+                        </>
                     )}
                 </TouchableOpacity>
             </View>
@@ -197,65 +235,93 @@ export const ImageReviewSheet = ({ onClose }: ImageReviewSheetProps) => {
 
 const styles = StyleSheet.create({
     container: {
-        padding: 24,
-        alignItems: 'center',
+        paddingVertical: 10,
     },
-    title: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 8,
-    },
-    subtitle: {
-        fontSize: 14,
+    description: {
+        fontSize: 15,
         textAlign: 'center',
-        marginBottom: 24,
+        marginBottom: 30,
+        lineHeight: 22,
+        opacity: 0.8,
+        paddingHorizontal: 20,
     },
-    row: {
+    buttonContainer: {
         flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 20,
-        width: '100%',
+        gap: 16,
+        marginBottom: 20,
     },
-    bigButton: {
+    actionCard: {
         flex: 1,
-        aspectRatio: 1,
-        borderRadius: 16,
+        height: 140,
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
-        maxWidth: 140,
+        borderWidth: 1.5,
     },
-    buttonLabel: {
-        marginTop: 12,
-        fontWeight: '500',
+    iconCircle: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    actionLabel: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    reviewHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
     },
     previewImage: {
         width: '100%',
-        height: 300,
-        borderRadius: 12,
+        height: 380,
+        borderRadius: 20,
         marginBottom: 20,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
     },
     errorText: {
         color: '#EF4444',
-        marginBottom: 10,
+        marginBottom: 16,
+        textAlign: 'center',
+        fontSize: 14,
     },
-    actionRow: {
+    footerActions: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        width: '100%',
-        alignItems: 'center',
+        gap: 12,
     },
-    textButton: {
-        padding: 12,
+    secondaryButton: {
+        flex: 1,
+        paddingVertical: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+    },
+    secondaryButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
     },
     primaryButton: {
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 12,
-        minWidth: 120,
+        flex: 2,
+        flexDirection: 'row',
+        paddingVertical: 16,
+        borderRadius: 16,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     primaryButtonText: {
         color: 'white',
-        fontWeight: '600',
+        fontSize: 16,
+        fontWeight: '700',
     }
 });

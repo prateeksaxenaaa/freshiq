@@ -8,16 +8,18 @@ import { useMoveRecipeToCookbook, useRecipeCookbooks } from '@/hooks/useCookbook
 import { useDeleteRecipe, useRecipe } from '@/hooks/useRecipeDetail';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
     useColorScheme,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,17 +33,28 @@ export default function RecipeDetailScreen() {
     const deleteRecipe = useDeleteRecipe();
     // Cookbook state for Save Button
     const { data: recipeCookbooks } = useRecipeCookbooks(recipe_id);
-    const currentCookbookId = recipeCookbooks && recipeCookbooks.length > 0 ? recipeCookbooks[0].id : null;
+    const initialCookbookId = (recipeCookbooks as any && (recipeCookbooks as any).length > 0) ? (recipeCookbooks as any)[0].id : null;
+
+    const [selectedCookbookId, setSelectedCookbookId] = useState<string | null>(null);
+    const [hasCookbookChanged, setHasCookbookChanged] = useState(false);
     const moveRecipeToCookbook = useMoveRecipeToCookbook();
 
     const [localServings, setLocalServings] = useState<number | null>(null);
 
-    // Sync local servings with recipe servings on load
+    // Sync state with data
     useEffect(() => {
         if (data?.recipe?.servings) {
             setLocalServings(data.recipe.servings);
         }
-    }, [data?.recipe?.servings]);
+        if (initialCookbookId !== undefined) {
+            setSelectedCookbookId(initialCookbookId);
+        }
+    }, [data?.recipe?.servings, initialCookbookId]);
+
+    const handleCookbookChange = (id: string | null) => {
+        setSelectedCookbookId(id);
+        setHasCookbookChanged(id !== initialCookbookId);
+    };
 
     if (isLoading) {
         return (
@@ -89,13 +102,32 @@ export default function RecipeDetailScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
+            <StatusBar style="auto" />
             <Stack.Screen
                 options={{
-                    headerTitle: '', // Title shown in body
-                    headerBackTitleVisible: false,
-                    headerShadowVisible: false,
+                    headerTitle: '',
+                    headerBackVisible: false,
+                    headerShadowVisible: true,
                     headerStyle: { backgroundColor: colors.background },
-                    headerTintColor: colors.text,
+                    headerLeft: () => (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: Platform.OS === 'ios' ? -10 : 0 }}>
+                            <Pressable
+                                onPress={() => router.back()}
+                                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, padding: 8 })}
+                            >
+                                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                            </Pressable>
+                            <Text style={{
+                                fontSize: 18,
+                                fontWeight: '800',
+                                color: colors.text,
+                                marginLeft: -4,
+                                width: 220
+                            }} numberOfLines={1}>
+                                {recipe?.title}
+                            </Text>
+                        </View>
+                    ),
                     headerRight: () => (
                         <Pressable
                             onPress={() => router.push(`/recipe/${recipe_id}/edit`)}
@@ -107,7 +139,12 @@ export default function RecipeDetailScreen() {
                 }}
             />
             <ScrollView showsVerticalScrollIndicator={false}>
-                <RecipeHeader recipeId={recipe_id} recipe={recipe} editable={false} />
+                <RecipeHeader
+                    recipeId={recipe_id}
+                    recipe={recipe}
+                    editable={true}
+                    onCookbookChange={handleCookbookChange}
+                />
 
                 {recipe.servings && (
                     <ServingsControl
@@ -132,24 +169,30 @@ export default function RecipeDetailScreen() {
                         style={[
                             styles.manageButton,
                             {
-                                backgroundColor: currentCookbookId ? colors.primary : colors.surface,
-                                borderColor: currentCookbookId ? colors.primary : (colors.border || '#eee'),
+                                backgroundColor: hasCookbookChanged ? colors.primary : colors.surface,
+                                borderColor: hasCookbookChanged ? colors.primary : (colors.border || '#E2E8F0'),
                                 borderWidth: 1,
-                                opacity: currentCookbookId ? 1 : 0.5
+                                opacity: hasCookbookChanged ? 1 : 0.6
                             }
                         ]}
-                        disabled={!currentCookbookId}
-                        onPress={() => {
-                            if (currentCookbookId) {
-                                // Just a confirmation act since it's already "moved" via the dropdown
-                                Alert.alert("Saved", "Recipe saved to cookbook successfully!", [
-                                    { text: "OK", onPress: () => router.replace('/(tabs)/home') }
-                                ]);
+                        disabled={!hasCookbookChanged}
+                        onPress={async () => {
+                            if (hasCookbookChanged) {
+                                try {
+                                    await moveRecipeToCookbook.mutateAsync({
+                                        recipeId: recipe_id,
+                                        cookbookId: selectedCookbookId
+                                    });
+                                    setHasCookbookChanged(false);
+                                    Alert.alert("Success", "Recipe saved to cookbook!");
+                                } catch (e) {
+                                    Alert.alert("Error", "Failed to save recipe");
+                                }
                             }
                         }}
                     >
-                        <Ionicons name="save-outline" size={20} color={currentCookbookId ? 'white' : colors.text} />
-                        <Text style={[styles.manageButtonText, { color: currentCookbookId ? 'white' : colors.text }]}>Save Recipe</Text>
+                        <Ionicons name="save-outline" size={20} color={hasCookbookChanged ? 'white' : colors.neutral} />
+                        <Text style={[styles.manageButtonText, { color: hasCookbookChanged ? 'white' : colors.neutral }]}>Save Changes</Text>
                     </Pressable>
 
                     <Pressable

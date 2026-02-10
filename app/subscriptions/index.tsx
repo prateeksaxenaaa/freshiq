@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { Stack } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SubscriptionsScreen() {
     const { subscription, isSubLoading, billingHistory, isBillingLoading } = useSubscription();
@@ -66,8 +67,16 @@ export default function SubscriptionsScreen() {
     const isActive = subscription && new Date(subscription.valid_until) > new Date();
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <Stack.Screen options={{ title: 'My Subscriptions' }} />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+            <Stack.Screen options={{ headerShown: false }} />
+
+            {/* Standard Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>My Subscriptions</Text>
+            </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Active Plan Card */}
@@ -124,7 +133,7 @@ export default function SubscriptionsScreen() {
                     </View>
                 )}
             </ScrollView>
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -145,14 +154,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+        backgroundColor: '#FFFFFF',
     },
     backButton: {
+        marginRight: 6,
         padding: 4,
     },
     headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        marginLeft: 12,
+        fontSize: 22,
+        fontWeight: '800',
+        letterSpacing: -0.5,
     },
     scrollContent: {
         padding: 20,
@@ -161,11 +174,8 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         padding: 24,
         marginBottom: 32,
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
     },
     planHeader: {
         flexDirection: 'row',

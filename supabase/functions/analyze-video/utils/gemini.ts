@@ -59,6 +59,11 @@ async function callGemini(prompt: string): Promise<any> {
             }),
         });
 
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Gemini API error: ${response.statusText} - ${errorText}`);
+        }
+
         const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         
@@ -66,6 +71,19 @@ async function callGemini(prompt: string): Promise<any> {
         return parseGeminiResponse(text);
     } catch (error) {
         console.error('Gemini API error:', error);
+
+        // Debug: Try to list models if API call fails
+        try {
+            const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
+            const listResp = await fetch(listModelsUrl);
+            if (listResp.ok) {
+                const listData = await listResp.json();
+                console.log('Available Gemini Models:', JSON.stringify(listData));
+            } else {
+                console.log('Failed to list models:', await listResp.text());
+            }
+        } catch (e) {}
+
         return { success: false, confidence: 0, error: (error as Error).message };
     }
 }

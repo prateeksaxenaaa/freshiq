@@ -73,7 +73,7 @@ export default function RecipeEditScreen() {
                 options={{
                     headerTitle: 'Edit Recipe',
                     headerBackTitleVisible: false,
-                    headerShadowVisible: false,
+                    headerShadowVisible: true,
                     headerStyle: { backgroundColor: colors.background },
                     headerTintColor: colors.text,
                     headerRight: () => (

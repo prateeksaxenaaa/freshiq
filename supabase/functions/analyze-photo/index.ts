@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     } catch (error) {
         console.error('Image Analysis Error:', error);
         return new Response(JSON.stringify({ success: false, error: (error as Error).message }), {
-            status: 500,
+            status: 200, // Return 200 so client can parse the error message
             headers: { 'Content-Type': 'application/json' }
         });
     }

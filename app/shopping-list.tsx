@@ -234,9 +234,8 @@ export default function ShoppingListScreen() {
                 }
             />
 
-            {/* Manual Add FAB */}
             <Pressable
-                style={[styles.fab, { backgroundColor: colors.primary, bottom: insets.bottom + 24 }]}
+                style={[styles.fab, { backgroundColor: colors.primary, bottom: insets.bottom + 50 }]}
                 onPress={() => {
                     resetForm();
                     setIsAddModalVisible(true);
@@ -372,6 +371,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         justifyContent: 'space-between',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+        backgroundColor: '#FFFFFF',
     },
     headerLeft: {
         flexDirection: 'row',
@@ -379,7 +381,7 @@ const styles = StyleSheet.create({
     },
     backButton: {
         padding: 4,
-        marginRight: 8,
+        marginRight: 6,
     },
     headerTitle: {
         fontSize: 22,

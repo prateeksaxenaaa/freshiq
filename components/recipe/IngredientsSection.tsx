@@ -59,54 +59,80 @@ export const IngredientsSection = ({ recipeId, ingredients, editable = false }: 
 
     return (
         <View style={styles.section}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 16 }}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Ingredients</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.neutral }}>({ingredients.length} items)</Text>
             </View>
 
-            {ingredients.map((ingredient) => (
-                <IngredientRow
-                    key={ingredient.id}
-                    ingredient={ingredient}
-                    recipeId={recipeId}
-                    colors={colors}
-                    editable={editable}
-                    onUpdate={updateIngredient.mutate}
-                    onDelete={() => deleteIngredient.mutate({ id: ingredient.id, recipeId })}
-                    onAddToShoppingList={() => handleAddToShoppingList(ingredient)}
-                />
-            ))}
+            {/* Availability Legend */}
+            <View style={styles.legendContainer}>
+                <View style={styles.legendRow}>
+                    <Text style={[styles.legendLabel, { color: colors.neutral }]}>Item match rate</Text>
+                    <View style={styles.legendItems}>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+                            <Text style={[styles.legendText, { color: colors.text }]}>In stock</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+                            <Text style={[styles.legendText, { color: colors.text }]}>Low stock</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendDot, { backgroundColor: colors.destructive }]} />
+                            <Text style={[styles.legendText, { color: colors.text }]}>Missing</Text>
+                        </View>
+                    </View>
+                </View>
+            </View>
+
+            {
+                ingredients.map((ingredient) => (
+                    <IngredientRow
+                        key={ingredient.id}
+                        ingredient={ingredient}
+                        recipeId={recipeId}
+                        colors={colors}
+                        editable={editable}
+                        onUpdate={updateIngredient.mutate}
+                        onDelete={() => deleteIngredient.mutate({ id: ingredient.id, recipeId })}
+                        onAddToShoppingList={() => handleAddToShoppingList(ingredient)}
+                    />
+                ))
+            }
 
             {/* Add Ingredient - Only in Edit Mode */}
-            {editable && (
-                showAddInput ? (
-                    <View style={[styles.addInputRow, { backgroundColor: colors.surface }]}>
-                        <TextInput
-                            style={[styles.addInput, { color: colors.text }]}
-                            value={newIngredientText}
-                            onChangeText={setNewIngredientText}
-                            placeholder="e.g., 2 large onions, diced"
-                            placeholderTextColor={colors.neutral}
-                            autoFocus
-                            onSubmitEditing={handleAddIngredient}
-                            onBlur={() => {
-                                if (!newIngredientText.trim()) setShowAddInput(false);
-                            }}
-                        />
-                        <Pressable onPress={handleAddIngredient}>
-                            <Ionicons name="checkmark" size={24} color={colors.primary} />
+            {
+                editable && (
+                    showAddInput ? (
+                        <View style={[styles.addInputRow, { backgroundColor: colors.surface }]}>
+                            <TextInput
+                                style={[styles.addInput, { color: colors.text }]}
+                                value={newIngredientText}
+                                onChangeText={setNewIngredientText}
+                                placeholder="e.g., 2 large onions, diced"
+                                placeholderTextColor={colors.neutral}
+                                autoFocus
+                                onSubmitEditing={handleAddIngredient}
+                                onBlur={() => {
+                                    if (!newIngredientText.trim()) setShowAddInput(false);
+                                }}
+                            />
+                            <Pressable onPress={handleAddIngredient}>
+                                <Ionicons name="checkmark" size={24} color={colors.primary} />
+                            </Pressable>
+                        </View>
+                    ) : (
+                        <Pressable
+                            style={[styles.addButton, { backgroundColor: colors.surface }]}
+                            onPress={() => setShowAddInput(true)}
+                        >
+                            <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+                            <Text style={[styles.addButtonText, { color: colors.primary }]}>Add Ingredient</Text>
                         </Pressable>
-                    </View>
-                ) : (
-                    <Pressable
-                        style={[styles.addButton, { backgroundColor: colors.surface }]}
-                        onPress={() => setShowAddInput(true)}
-                    >
-                        <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-                        <Text style={[styles.addButtonText, { color: colors.primary }]}>Add Ingredient</Text>
-                    </Pressable>
+                    )
                 )
-            )}
-        </View>
+            }
+        </View >
     );
 };
 
@@ -270,9 +296,43 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         marginBottom: 0,
     },
-    ingredientRow: {
+    legendContainer: {
+        paddingVertical: 12,
         marginBottom: 16,
-        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.05)',
+    },
+    legendRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    legendLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        width: 110,
+        letterSpacing: 0,
+    },
+    legendItems: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    legendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    legendDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    legendText: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    ingredientRow: {
+        marginBottom: 8,
+        paddingVertical: 6,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: 'rgba(0,0,0,0.05)',
     },

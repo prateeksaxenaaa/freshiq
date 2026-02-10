@@ -1,12 +1,14 @@
 import Colors from '@/constants/Colors';
 import { FeatureRequest, useFeedback } from '@/hooks/useFeedback';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import { Stack, useRouter } from 'expo-router';
+import React, { useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
     LayoutAnimation,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
     Platform,
     ScrollView,
     StyleSheet,
@@ -16,6 +18,7 @@ import {
     View,
     useColorScheme
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -34,17 +37,35 @@ export default function FeedbackScreen() {
     const [activeTab, setActiveTab] = useState('open');
     const colorScheme = useColorScheme();
     const colors = Colors[colorScheme ?? 'light'];
+    const router = useRouter();
+    const scrollRef = useRef<ScrollView>(null);
 
-    const filteredFeatures = useMemo(() => {
-        return features.filter(f => f.status === activeTab);
-    }, [features, activeTab]);
+    const onTabPress = (index: number) => {
+        setActiveTab(TABS[index].key);
+        scrollRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
+    };
+
+    const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const offsetX = event.nativeEvent.contentOffset.x;
+        const index = Math.round(offsetX / SCREEN_WIDTH);
+        if (TABS[index] && TABS[index].key !== activeTab) {
+            setActiveTab(TABS[index].key);
+        }
+    };
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <Stack.Screen options={{ title: 'Feedback & Ideas' }} />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+            <Stack.Screen options={{ headerShown: false }} />
+
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Feedback & Ideas</Text>
+            </View>
 
             {/* Note Section */}
-            <View style={[styles.noteBanner, { backgroundColor: colors.surface }]}>
+            <View style={[styles.noteBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
                 <View style={styles.noteTextContainer}>
                     <Text style={[styles.noteText, { color: colors.text }]}>
@@ -57,8 +78,8 @@ export default function FeedbackScreen() {
             </View>
 
             {/* Custom Tabs */}
-            <View style={styles.tabBar}>
-                {TABS.map(tab => {
+            <View style={[styles.tabBar, { borderBottomColor: colors.border }]}>
+                {TABS.map((tab, index) => {
                     const isActive = activeTab === tab.key;
                     return (
                         <TouchableOpacity
@@ -67,10 +88,7 @@ export default function FeedbackScreen() {
                                 styles.tab,
                                 isActive && { borderBottomColor: colors.primary, borderBottomWidth: 3 }
                             ]}
-                            onPress={() => {
-                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                setActiveTab(tab.key);
-                            }}
+                            onPress={() => onTabPress(index)}
                         >
                             <Text style={[
                                 styles.tabLabel,
@@ -90,29 +108,45 @@ export default function FeedbackScreen() {
                 </View>
             ) : (
                 <ScrollView
-                    contentContainerStyle={styles.listContent}
-                    showsVerticalScrollIndicator={false}
+                    ref={scrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onMomentumScrollEnd={handleScroll}
+                    style={{ flex: 1 }}
                 >
-                    {filteredFeatures.length > 0 ? (
-                        filteredFeatures.map(item => (
-                            <FeatureCard
-                                key={item.id}
-                                feature={item}
-                                colors={colors}
-                                onUpvote={() => toggleUpvote(item.id)}
-                            />
-                        ))
-                    ) : (
-                        <View style={styles.emptyState}>
-                            <Ionicons name="bulb-outline" size={64} color={colors.surface} />
-                            <Text style={[styles.emptyText, { color: colors.neutral }]}>
-                                No features in this category yet.
-                            </Text>
-                        </View>
-                    )}
+                    {TABS.map((tab) => {
+                        const tabFeatures = features.filter(f => f.status === tab.key);
+                        return (
+                            <View key={tab.key} style={{ width: SCREEN_WIDTH }}>
+                                <ScrollView
+                                    contentContainerStyle={styles.listContent}
+                                    showsVerticalScrollIndicator={false}
+                                >
+                                    {tabFeatures.length > 0 ? (
+                                        tabFeatures.map(item => (
+                                            <FeatureCard
+                                                key={item.id}
+                                                feature={item}
+                                                colors={colors}
+                                                onUpvote={() => toggleUpvote(item.id)}
+                                            />
+                                        ))
+                                    ) : (
+                                        <View style={styles.emptyState}>
+                                            <Ionicons name="bulb-outline" size={64} color={colors.border} />
+                                            <Text style={[styles.emptyText, { color: colors.neutral }]}>
+                                                No features in this category yet.
+                                            </Text>
+                                        </View>
+                                    )}
+                                </ScrollView>
+                            </View>
+                        );
+                    })}
                 </ScrollView>
             )}
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -160,11 +194,6 @@ function FeatureCard({ feature, colors, onUpvote }: { feature: FeatureRequest, c
                                 backgroundColor: feature.user_has_upvoted ? colors.primary : colors.background,
                                 borderColor: feature.user_has_upvoted ? colors.primary : colors.border,
                                 borderWidth: 1,
-                                elevation: feature.user_has_upvoted ? 4 : 0,
-                                shadowColor: colors.primary,
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: feature.user_has_upvoted ? 0.3 : 0,
-                                shadowRadius: 4,
                             }
                         ]}
                     >
@@ -221,6 +250,24 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+        backgroundColor: '#FFFFFF',
+    },
+    backButton: {
+        marginRight: 6,
+        padding: 4,
+    },
+    headerTitle: {
+        fontSize: 22,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
     center: {
         flex: 1,
         justifyContent: 'center',
@@ -232,11 +279,8 @@ const styles = StyleSheet.create({
         margin: 16,
         borderRadius: 16,
         alignItems: 'center',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
     },
     noteTextContainer: {
         marginLeft: 12,
@@ -255,7 +299,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         paddingHorizontal: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#f1f1f1',
     },
     tab: {
         flex: 1,
@@ -274,11 +317,8 @@ const styles = StyleSheet.create({
     card: {
         borderRadius: 20,
         padding: 16,
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
     },
     cardMain: {
         flexDirection: 'row',

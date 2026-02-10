@@ -3,7 +3,7 @@ import Colors from '@/constants/Colors';
 import { useHousehold } from '@/contexts/HouseholdProvider';
 import { InventoryItem, useCreateInventoryItem, useDeleteStorageLocation, useInventory, useStorageLocations, useUpdateInventoryItem } from '@/hooks/useInventory';
 import { supabase } from '@/lib/supabase';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -282,7 +282,7 @@ export default function StorageDetailScreen() {
                             >
                                 <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Mark Used</Text>
                             </TouchableOpacity>
-                            <Ionicons name="pencil" size={20} color={colors.neutral} />
+                            <MaterialCommunityIcons name="pencil" size={20} color={colors.neutral} />
                         </View>
                     )}
                 </TouchableOpacity>
@@ -565,9 +565,18 @@ export default function StorageDetailScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16, gap: 12 },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+        backgroundColor: '#FFFFFF',
+    },
     backBtn: { padding: 4 },
-    headerTitle: { fontSize: 28, fontWeight: '800' },
+    headerTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
     deleteBtnTop: {
         padding: 8,
         marginRight: -4,
@@ -580,7 +589,7 @@ const styles = StyleSheet.create({
     legendDot: { width: 10, height: 10, borderRadius: 5 },
     legendText: { fontSize: 13, fontWeight: '500' },
     listContent: { padding: 20, paddingBottom: 100 },
-    itemCard: { borderRadius: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2, overflow: 'hidden' },
+    itemCard: { borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' },
     itemRow: { flexDirection: 'row', alignItems: 'center', padding: 16 },
     indicators: { marginRight: 12, justifyContent: 'center' },
     dot: { width: 10, height: 10, borderRadius: 5 },
@@ -603,7 +612,7 @@ const styles = StyleSheet.create({
     fab: {
         position: 'absolute',
         right: 20,
-        bottom: 40,
+        bottom: 70,
         width: 60,
         height: 60,
         borderRadius: 30,

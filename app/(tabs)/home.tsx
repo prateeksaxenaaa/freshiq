@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     fab: {
         position: 'absolute',
         right: 20,
-        bottom: 20, // Inside View relative to SafeArea (edges=['top'] means bottom is safe?) No, standard view.
+        bottom: 50, // Inside View relative to SafeArea (edges=['top'] means bottom is safe?) No, standard view.
         // Wait, SafeAreaView edges=['top'] means it adds padding ONLY to top.
         // So bottom is UNSAFE.
         // I should use bottom: 20 BUT inside a View that extends to bottom.

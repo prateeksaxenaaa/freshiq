@@ -58,10 +58,12 @@ export async function fetchYouTubeTranscript(videoId: string): Promise<{ text: s
             if (index > -1) {
                 // Try to snip a valid JSON chunk around it
                 const snippet = html.substring(index, index + 5000); // 5kb window
-                const trackMatch = snippet.match(/"captionTracks":(\[.*?\])/);
+                const trackMatch = snippet.match(/"captionTracks":\s*(\[.*?\])/);
                 if (trackMatch) {
                      try {
-                        captionTracks = JSON.parse(trackMatch[1]);
+                        const jsonStr = trackMatch[1];
+                        // Basic cleanup for unescaped quotes if needed
+                        captionTracks = JSON.parse(jsonStr);
                     } catch (e) {
                         console.error('[Transcript] Strategy C JSON parse error', e);
                     }
